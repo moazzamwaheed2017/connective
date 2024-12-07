@@ -1,103 +1,176 @@
 import streamlit as st
 import requests
-import jwt
-import os
-from dotenv import load_dotenv
+import time
 
-# Load environment variables
-load_dotenv()
-llama_api_key = os.getenv("LLAMA_API_KEY")
-toolhouse_sdk_key = os.getenv("TOOLHOUSE_SDK_KEY")
-groq_api_key = os.getenv("GROQ_API_KEY")
-jwt_secret = os.getenv("JWT_SECRET")
+# Sidebar for API Keys
+st.sidebar.title("Configuration")
 
-# Helper: Generate JWT Token
-def generate_bearer_token():
-    payload = {"service": "Connective"}
-    return jwt.encode(payload, jwt_secret, algorithm="HS256")
+# Input fields for various API keys
+LLAMA_API_KEY = st.sidebar.text_input("Llama3.1 API Key", type="password")
+TOOLHOUSE_API_KEY = st.sidebar.text_input("Toolhouse API Key", type="password")
+AIML_API_KEY = st.sidebar.text_input("AI/ML API Key", type="password")
+BLAND_API_KEY = st.sidebar.text_input("Groq API Key", type="password")
 
-# Helper: Preprocess User Query
-def preprocess_query(query):
-    return query.strip().lower()  # Example preprocessing logic
+# Ensure all API keys are provided
+if not (LLAMA_API_KEY and TOOLHOUSE_API_KEY and AIML_API_KEY and BLAND_API_KEY):
+    st.error("Please provide all API keys in the sidebar.")
+    st.stop()
 
-# Helper: Retrieve Data from Dataset (Toolhouse Integration)
-def retrieve_data_from_dataset(processed_query):
-    try:
-        response = requests.post(
-            "https://api.toolhouse.com/resource",
-            json={"query": processed_query, "apiKey": toolhouse_sdk_key}
-        )
-        return response.json()
-    except Exception as e:
-        st.error(f"Error retrieving data: {e}")
-        return None
+# Task Scripts for Different Categories
+TASK_SCRIPTS = {
+    "Banks": """
+// Step 1: Greet the Customer
+Say: "Hello, this is [Bank Name] Customer Support. How can I assist you today?"
 
-# Helper: Generate AI Response using Llama 3
-def generate_llama_response(query, dataset_response, user_context):
-    try:
-        prompt = f"""
-        User Query: {query}
-        Dataset Response: {dataset_response}
-        User Context: {user_context}
-        Provide a context-aware response for the user.
-        """
-        response = requests.post(
-            "https://api.llama3.meta.com/v1/chat",
-            json={"prompt": prompt, "apiKey": llama_api_key}
-        )
-        return response.json().get("response", "No response received.")
-    except Exception as e:
-        st.error(f"Error generating AI response: {e}")
-        return None
+// Step 2: Address Common Bank Queries
+If the user says "I want to check my account balance," respond:
+    "Sure, I can help with that. May I know your account number and verify your registered phone number?"
 
-# Streamlit App Interface
-st.title("Connective API - Streamlit Version")
+If the user says "I need help with a transaction," respond:
+    "I understand. Please provide the transaction ID or details, and I'll assist you right away."
 
-# Generate Token Section
-st.header("Generate Bearer Token")
-if st.button("Generate Token"):
-    token = generate_bearer_token()
-    st.success(f"Generated Token: {token}")
+// Step 3: Provide Resolution or Escalation
+If the issue is unresolved:
+    "I will escalate your concern to our senior support team. They will contact you shortly."
 
-# Query Processing Section
-st.header("User Query Processing")
-query = st.text_input("Enter your query:")
-user_context = st.text_area("Enter user context (JSON format):")
-if st.button("Process Query"):
-    if query:
-        processed_query = preprocess_query(query)
-        st.write(f"Processed Query: {processed_query}")
+// Step 4: Closing
+Say: "Thank you for contacting [Bank Name]. Have a great day!"
+""",
+    "Call Centres": """
+// Step 1: Greet the Caller
+Say: "Hello, thank you for calling [Company Name]. How may I assist you today?"
 
-        dataset_response = retrieve_data_from_dataset(processed_query)
-        if dataset_response:
-            st.write("Dataset Response:", dataset_response)
+// Step 2: Identify and Address the Caller’s Concern
+If the caller says "I need help with my account," respond:
+    "Sure, let me pull up your account details. May I have your account ID or registered phone number?"
 
-            ai_response = generate_llama_response(processed_query, dataset_response, user_context)
-            st.write("AI Response:", ai_response)
-    else:
-        st.warning("Please enter a query to process.")
+If the caller says "I have a billing issue," respond:
+    "I understand. Please provide your billing statement or account ID, and I’ll look into it for you."
 
-# Real-Time Alerts Section
-st.header("Real-Time Alerts")
-resource_update = st.text_area("Enter resource update (JSON format):")
-if st.button("Send Alert"):
-    if resource_update:
+// Step 3: Provide Updates or Escalation
+If more information is required:
+    "I’ll forward this to our billing department for further assistance. They will contact you soon."
+
+// Step 4: Closing
+Say: "Thank you for choosing [Company Name]. Have a wonderful day!"
+""",
+    "Recovery Departments of Companies": """
+// Step 1: Greet the Customer
+Say: "Hello, this is [Recovery Department Name] from [Company Name]. I’m reaching out regarding an outstanding payment."
+
+// Step 2: Address Payment Issues
+If the user says "I can’t pay right now," respond:
+    "I understand your situation. Let’s work together to find a feasible payment plan. Would you like to discuss options?"
+
+If the user says "I’ve already made the payment," respond:
+    "Thank you for informing us. Could you provide the transaction reference number so I can verify it?"
+
+// Step 3: Offer Assistance
+Say: "If you need any further assistance regarding your payment, feel free to let me know."
+
+// Step 4: Closing
+Say: "Thank you for your time. We value your partnership with [Company Name]. Have a good day!"
+""",
+    "Customer Services of Banks and Companies": """
+// Step 1: Greet the Customer
+Say: "Hello, this is [Customer Service Team] at [Bank/Company Name]. How can I assist you today?"
+
+// Step 2: Identify the Concern
+If the customer says "I need help with a product/service," respond:
+    "I’m here to help. Can you share more details about the product or service you need assistance with?"
+
+If the customer says "I want to file a complaint," respond:
+    "I’m sorry for the inconvenience caused. Could you please provide details of the issue so we can address it promptly?"
+
+// Step 3: Resolution or Escalation
+Say: "I’ll make sure your issue is prioritized. Our team will contact you within [timeframe]."
+
+// Step 4: Closing
+Say: "Thank you for choosing [Bank/Company Name]. Have a great day!"
+"""
+}
+
+# Streamlit UI
+st.title("Connective - Transforming Communication with AI Intelligence")
+
+# Dropdown for selecting the category
+category = st.selectbox(
+    "Select a Category:",
+    ["Banks", "Call Centres", "Recovery Departments of Companies", "Customer Services of Banks and Companies"]
+)
+
+# Input fields for initiating call
+st.header("Initiate Outbound Call")
+phone_number = st.text_input("Phone Number")
+name = st.text_input("Name")
+email = st.text_input("Email")
+
+# Function to get call details by polling until the call status is 'complete'
+def get_call_details(call_id):
+    url = "https://api.bland.ai/logs"
+    data = {"call_id": call_id}
+
+    call_status = ''
+    retries = 10  # Maximum number of attempts
+    delay = 15  # Wait time between retries (in seconds)
+
+    # Polling loop to check the call status
+    for attempt in range(retries):
+        st.write(f"Attempting to fetch call details for call ID: {call_id} (Attempt {attempt + 1} of {retries})")
+        
         try:
-            response = requests.post(
-                "https://api.ai.ml.com/v1/alerts",
-                json={
-                    "update": resource_update,
-                    "context": user_context,
-                    "apiKey": os.getenv("AI_ML_API_KEY")
-                }
-            )
-            st.success(f"Alert Sent: {response.json()}")
-        except Exception as e:
-            st.error(f"Error sending alert: {e}")
-    else:
-        st.warning("Please enter a resource update.")
+            response = requests.post(url, json=data, headers={"Authorization": f"Bearer {BLAND_API_KEY}", "Content-Type": "application/json"})
+            call_details = response.json()
+            call_status = call_details.get('queue_status', '').lower()
 
-# Status Section
-st.header("Server Status")
-if st.button("Check Server Status"):
-    st.success("Connective API is running.")
+            # Check if the call status is 'complete' or 'completed'
+            if call_status in ['complete', 'completed']:
+                st.write("Call is complete. Returning details.")
+                return call_details  # Return the completed call details
+
+        except Exception as e:
+            st.error(f"Error fetching call details: {e}")
+            return None
+
+        st.write(f"Call status: {call_status}. Retrying in {delay} seconds...")
+        time.sleep(delay)  # Wait before retrying
+
+    st.error("Call did not complete within the allowed attempts.")
+    return None
+
+# Function to initiate an outbound call
+def initiate_outbound_call(phone_number, name, email, task_script):
+    data = {
+        "phone_number": phone_number,
+        "task": task_script,
+        "summarize": True,
+        "record": True
+    }
+
+    headers = {"Authorization": f"Bearer {BLAND_API_KEY}", "Content-Type": "application/json"}
+    response = requests.post("https://api.bland.ai/call", json=data, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Failed to initiate call: {response.text}")
+        return None
+
+if st.button("Initiate Call"):
+    task_script = TASK_SCRIPTS[category]
+    call_response = initiate_outbound_call(phone_number, name, email, task_script)
+    if call_response:  # Fixed indentation here
+        st.success("Call initiated successfully!")
+        st.json(call_response)
+
+        # Fetch the call ID from the response and wait for call completion
+        call_id = call_response.get("call_id")
+        if call_id:
+            st.write("Polling for call status...")
+            call_details = get_call_details(call_id)
+
+            if call_details:
+                st.header("Call Details")
+                st.json(call_details)
+            else:
+                st.error("Failed to retrieve complete call details.")

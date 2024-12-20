@@ -6,92 +6,97 @@ import time
 st.sidebar.title("Configuration")
 
 # Input fields for various API keys
-LLAMA_API_KEY = st.sidebar.text_input("Llama3.1 API Key", type="password")
-TOOLHOUSE_API_KEY = st.sidebar.text_input("Toolhouse API Key", type="password")
-AIML_API_KEY = st.sidebar.text_input("AI/ML API Key", type="password")
-BLAND_API_KEY = st.sidebar.text_input("Groq API Key", type="password")
 
-# Ensure all API keys are provided
-if not (LLAMA_API_KEY and TOOLHOUSE_API_KEY and AIML_API_KEY and BLAND_API_KEY):
-    st.error("Please provide all API keys in the sidebar.")
-    st.stop()
+BLAND_API_KEY = 'org_8eabc93849311b46844d2ff69b684f544bf7adb1ed6a4b93b328e92791bfa79e1909301b43eadc679bde69'
 
-# Task Script
-TASK_SCRIPT = """
-// Step 1: Wait and Prompt
-If no response, say: "Hello, this is [Connective AI Voice Agent]. Can you hear me?"
-(Pause briefly after saying "Hello?")
+# Task Scripts for Different Categories
+TASK_SCRIPTS = {
+    "Banks": """
+// Step 1: Greet the Customer
+Say: "Hello, this is [Bank Name] Customer Support. How can I assist you today?"
 
-// Step 2: Confirm User's Name
-If the user responds with "Hello," then say: "Hello, is this ${lead.name}?"
-(Wait for user to respond 'Yes')
+// Step 2: Address Common Bank Queries
+If the user says "I want to check my account balance," respond:
+    "Sure, I can help with that. May I know your account number and verify your registered phone number?"
 
-// Step 3: Proceed Based on Confirmation
-If the user responds with "Yes":
-    "${lead.name}, I’m calling from Connective, here to assist you with health-related services and resources available for work-related injuries or conditions. How can I help you today?"
+If the user says "I need help with a transaction," respond:
+    "I understand. Please provide the transaction ID or details, and I'll assist you right away."
 
-// Step 4: Identifying the User's Needs
-If the user says: "I have a work-related injury" or "I have pain in my shoulder/spine/etc.," then:
-    "I understand you're experiencing a condition due to work-related activity. Let's get you the right help."
+// Step 3: Provide Resolution or Escalation
+If the issue is unresolved:
+    "I will escalate your concern to our senior support team. They will contact you shortly."
 
-// Step 5: Query for the Type of Condition
-Say: "Can you please tell me more about your condition? Is it related to shoulder pain, back pain, or another condition like carpal tunnel syndrome, hearing loss, or joint issues?"
+// Step 4: Closing
+Say: "Thank you for contacting [Bank Name]. Have a great day!"
+""",
+    "Call Centres": """
+// Step 1: Greet the Caller
+Say: "Hello, thank you for calling [Company Name]. How may I assist you today?"
 
-// Step 6: Condition-Related Responses
-If the user mentions shoulder pain or any condition from the dataset:
-    "Thank you for sharing. Based on your condition, here are some options for support:"
+// Step 2: Identify and Address the Caller’s Concern
+If the caller says "I need help with my account," respond:
+    "Sure, let me pull up your account details. May I have your account ID or registered phone number?"
 
-    - **For Shoulder Pain (M75)**: "We found that shoulder pain is common in industries where repetitive motion is involved, such as construction and healthcare. You can visit **Rome Rehabilitation Clinic** at Via Roma 15, Rome. They specialize in treating shoulder injuries. Would you like more details?"
+If the caller says "I have a billing issue," respond:
+    "I understand. Please provide your billing statement or account ID, and I’ll look into it for you."
 
-    - **For Spinal Disorders (M51.1)**: "It seems like your condition may involve the spine. The **Florence Spine Health Center** offers treatments for spinal conditions like herniated discs. They are located at Via Firenze 17, Florence. Would you like to schedule an appointment?"
+// Step 3: Provide Updates or Escalation
+If more information is required:
+    "I’ll forward this to our billing department for further assistance. They will contact you soon."
 
-    - **For Carpal Tunnel Syndrome (G56.0)**: "If you're experiencing symptoms of carpal tunnel syndrome, the **Naples NeuroClinic** at Piazza Napoli 22 specializes in treating repetitive strain injuries like this. Should I send you their contact details?"
+// Step 4: Closing
+Say: "Thank you for choosing [Company Name]. Have a wonderful day!"
+""",
+    "Recovery Departments of Companies": """
+// Step 1: Greet the Customer
+Say: "Hello, this is [Recovery Department Name] from [Company Name]. I’m reaching out regarding an outstanding payment."
 
-    - **For Hearing Loss (H83.3)**: "If you're dealing with hearing loss, the **Venice Audiology Center** provides advanced hearing solutions. They are located at Calle Venezia 5, Venice. Would you like to hear more about their services?"
+// Step 2: Address Payment Issues
+If the user says "I can’t pay right now," respond:
+    "I understand your situation. Let’s work together to find a feasible payment plan. Would you like to discuss options?"
 
-    - **For Joint Disorders (M65, M77.0)**: "If you're suffering from joint disorders, you may want to check with **Naples Joint Care Clinic**, which offers physical therapy and pain management. Their address is Piazza Napoli 30, Naples. Can I assist with scheduling an appointment?"
+If the user says "I’ve already made the payment," respond:
+    "Thank you for informing us. Could you provide the transaction reference number so I can verify it?"
 
-    - **For Respiratory Issues (J40, J45)**: "For respiratory conditions like asthma or bronchitis, the **Genoa Pulmonology Center** offers specialized care. Located at Piazza Genoa 5, Genoa, they are open to assist you. Should I connect you to their team?"
+// Step 3: Offer Assistance
+Say: "If you need any further assistance regarding your payment, feel free to let me know."
 
-    - **Other Conditions**: "If your condition doesn't match any of the above, we still have resources available to support your recovery. I can provide more information based on your specific symptoms."
+// Step 4: Closing
+Say: "Thank you for your time. We value your partnership with [Company Name]. Have a good day!"
+""",
+    "Customer Services of Banks and Companies": """
+// Step 1: Greet the Customer
+Say: "Hello, this is [Customer Service Team] at [Bank/Company Name]. How can I assist you today?"
 
-// Step 7: Offer Additional Services
-Say: "In addition to medical support, we also provide services like career counseling and job retraining programs for individuals with work-related conditions."
+// Step 2: Identify the Concern
+If the customer says "I need help with a product/service," respond:
+    "I’m here to help. Can you share more details about the product or service you need assistance with?"
 
-    - **Career Transition Program** in Milan for those who need help with job placement and retraining.
-    - **Vocational Rehabilitation** in Rome for those who need assistance returning to work after an injury.
-    - **Family Assistance Network** in Naples for childcare and eldercare services.
+If the customer says "I want to file a complaint," respond:
+    "I’m sorry for the inconvenience caused. Could you please provide details of the issue so we can address it promptly?"
 
-Would you like more information on these services?
+// Step 3: Resolution or Escalation
+Say: "I’ll make sure your issue is prioritized. Our team will contact you within [timeframe]."
 
-// Step 8: Final Decision and Contact Information
-If the user confirms interest in any resource:
-    "Great! I’ll send you the contact information right now. Please hold on."
-
-If the user is unsure or needs more details:
-    "No problem. I can provide additional information or help you make an appointment if you wish. Feel free to reach out to me anytime."
-
-// Step 9: Closing the Call
-Say: "Thank you for your time today, ${lead.name}. If you have further questions or need assistance, don’t hesitate to reach out. Have a great day and take care!"
+// Step 4: Closing
+Say: "Thank you for choosing [Bank/Company Name]. Have a great day!"
 """
+}
 
-# Function to initiate an outbound call
-def initiate_outbound_call(phone_number, name, email):
-    data = {
-        "phone_number": phone_number,
-        "task": TASK_SCRIPT,
-        "summarize": True,
-        "record": True
-    }
+# Streamlit UI
+st.title("Connective - Transforming Communication with AI Intelligence")
 
-    headers = {"Authorization": f"Bearer {BLAND_API_KEY}", "Content-Type": "application/json"}
-    response = requests.post("https://api.bland.ai/call", json=data, headers=headers)
+# Dropdown for selecting the category
+category = st.selectbox(
+    "Select a Category:",
+    ["Banks", "Call Centres", "Recovery Departments of Companies", "Customer Services of Banks and Companies"]
+)
 
-    if response.status_code == 200:
-        return response.json()
-    else:
-        st.error(f"Failed to initiate call: {response.text}")
-        return None
+# Input fields for initiating call
+st.header("Initiate Outbound Call")
+phone_number = st.text_input("Phone Number")
+name = st.text_input("Name")
+email = st.text_input("Email")
 
 # Function to get call details by polling until the call status is 'complete'
 def get_call_details(call_id):
@@ -126,18 +131,28 @@ def get_call_details(call_id):
     st.error("Call did not complete within the allowed attempts.")
     return None
 
-# Streamlit UI
-st.title("Connective - Empowering Communities through AI Voice Technology")
+# Function to initiate an outbound call
+def initiate_outbound_call(phone_number, name, email, task_script):
+    data = {
+        "phone_number": phone_number,
+        "task": task_script,
+        "summarize": True,
+        "record": True
+    }
 
-# Input fields for initiating call
-st.header("Initiate Outbound Call")
-phone_number = st.text_input("Phone Number")
-name = st.text_input("Name")
-email = st.text_input("Email")
+    headers = {"Authorization": f"Bearer {BLAND_API_KEY}", "Content-Type": "application/json"}
+    response = requests.post("https://api.bland.ai/call", json=data, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Failed to initiate call: {response.text}")
+        return None
 
 if st.button("Initiate Call"):
-    call_response = initiate_outbound_call(phone_number, name, email)
-    if call_response:
+    task_script = TASK_SCRIPTS[category]
+    call_response = initiate_outbound_call(phone_number, name, email, task_script)
+    if call_response:  # Fixed indentation here
         st.success("Call initiated successfully!")
         st.json(call_response)
 

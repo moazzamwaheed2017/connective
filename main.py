@@ -3,7 +3,7 @@ import requests
 import time
 
 # Sidebar for API Keys
-st.sidebar.title("Configuration")
+# st.sidebar.title("Configuration")
 
 # Input fields for various API keys
 

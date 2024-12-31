@@ -84,7 +84,7 @@ Say: "Thank you for choosing [Bank/Company Name]. Have a great day!"
 }
 
 # Streamlit UI
-st.title("Connective - Transforming Communication with AI Intelligence")
+st.title("AutoSpeak - Transforming Communication with AI Intelligence")
 
 # Dropdown for selecting the category
 category = st.selectbox(
